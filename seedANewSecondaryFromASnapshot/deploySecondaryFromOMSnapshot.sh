@@ -19,7 +19,7 @@ rsId="5d6eda78abfe58358fb7e5c7" # shard - myReplicaSet
 myHostname="$(hostname -f)" # Deploying locally
 
 dbPathBase="/data"
-tcpPort=27028
+tcpPort=27017
 mongodUser="mongod"
 currentUser="$(whoami)"
 
