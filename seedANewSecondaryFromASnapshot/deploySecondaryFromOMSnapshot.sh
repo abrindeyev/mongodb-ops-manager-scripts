@@ -251,6 +251,24 @@ fi
 echo "Creating the config.transactions collection:"
 sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval 'db.getSiblingDB("config").runCommand({applyOps: [{ op: "c", ns: "config.$cmd", ui: '"$transactionsCollectionUUID"', o: { create: "transactions", idIndex: '"$transactionsCollectionIdIndex"' }}]})' "$standalone"
 
+echo "Performing fall-from-the-cliff check"
+earliestTsInPrimaryOplog="$(sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval 'DB.tsToSeconds(db.getSiblingDB("local").oplog.rs.find().sort({$natural: 1}).limit(1).next().ts)' "$uri" | fgrep -v ' I NETWORK  [')"
+if [[ $seedEntry =~ \*[[:space:]]([[:digit:]]+), ]]; then
+  snapshotLastOpTime="${BASH_REMATCH[1]}"
+else
+  echo "Can't extract last OpTime from the seed entry!"
+  exit 1
+fi
+if [[ $earliestTsInPrimaryOplog -gt $snapshotLastOpTime ]]; then
+  echo "ERROR: The snapshot is too old to be restored."
+  echo "Primary earliest oplog entry: $(date --date=@$earliestTsInPrimaryOplog)"
+  echo "Snapshot's last opTime      : $(date --date=@$snapshotLastOpTime)"
+  echo "Consider the following:"
+  echo "1. Wait for a fresh snapshot"
+  echo "2. Increase primary's oplog size"
+  exit 1
+fi
+
 echo "Adding the standalone to the $ReplicaSet replica set"
 rsAddConfigUpdatedFile="$(mktemp automationConfig-XXXXXXXX.json)"
 rsAddConfigUpdateResultFile="$(mktemp automationConfigUpdateResult-XXXXXXXX.json)"
