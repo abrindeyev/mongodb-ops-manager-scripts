@@ -237,6 +237,9 @@ sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval "db.getSibling
 echo "Seeding the oplog using the snapshot's data:"
 sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval "$seedEntry" "$standalone"
 
+echo "Creating a single-node replica set"
+sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval "db.getSiblingDB('local').system.replset.insert({'_id' : '$ReplicaSet','version' : 1,'members' : [{'_id' : 0,'host' :'$myHostname:$tcpPort'}],'settings' : {}})" "$standalone"
+
 if [[ $hasSessionsCollection == "1" ]]; then
   echo "Creating the config.system.sessions collection:"
   sudo_wrapper $mongodb_shell --quiet $mongo_shell_arguments --eval 'db.getSiblingDB("config").runCommand({applyOps: [{ op: "c", ns: "config.$cmd", ui: '"$sessionsCollectionUUID"', o: { create: "system.sessions", idIndex: '"$sessionsCollectionIdIndex"' }}]})' "$standalone"
